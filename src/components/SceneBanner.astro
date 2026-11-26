@@ -120,21 +120,38 @@ const sizes = '(max-width: 600px) calc(200vw - 5rem), (max-width: 720px) calc(10
       ctx.globalAlpha = 1;
     };
 
+    // Browsers that tint their toolbar with theme-color (Safari) would jump straight to the new colour;
+    // instead the toolbar follows the page background frame by frame while it fades.
+    const meta = document.querySelector('meta[name="theme-color"]');
+    let themeRun = 0;
+    const followTheme = (ms) => {
+      const my = ++themeRun, end = performance.now() + ms;
+      const tick = () => {
+        if (my !== themeRun || !meta) return;
+        meta.setAttribute('content', getComputedStyle(document.body).backgroundColor);
+        if (performance.now() < end) requestAnimationFrame(tick);
+      };
+      tick();
+    };
+
     let shown = S.current(), token = 0, fadeT, swapT;
     const same = (p, q) => p.a === q.a && p.b === q.b && Math.abs(p.s - q.s) < 0.002 && Math.abs(p.w - q.w) < 0.002;
-    const show = async (st) => {
+    // fade: seconds for the photo crossfade; page colours follow a touch faster.
+    const show = async (st, fade = 2) => {
       const my = ++token;
       await Promise.all(needed(st).map(ready));
       if (my !== token) return;
+      const flip = shown.tod !== st.tod && !reduce;
+      const dur = (flip ? 2 : fade) * 1000;
+      root.style.setProperty('--fade', `${(dur * 0.9 / 1000).toFixed(2)}s`);
       if (!same(st, shown) && !reduce) {
         capture();
         snap.style.transition = 'none'; snap.style.opacity = 1; snap.style.display = 'block';
         render(st);
         void snap.offsetWidth;
-        snap.style.transition = 'opacity 2s ease-in-out'; snap.style.opacity = 0;
-        setTimeout(() => { if (my === token) snap.style.display = 'none'; }, 2050);
+        snap.style.transition = `opacity ${dur}ms ease-in-out`; snap.style.opacity = 0;
+        setTimeout(() => { if (my === token) snap.style.display = 'none'; }, dur + 50);
       } else render(st);
-      const flip = shown.tod !== st.tod && !reduce;
       shown = st;
       clearTimeout(fadeT); clearTimeout(swapT);
       root.classList.add('scene-fade');
@@ -142,7 +159,9 @@ const sizes = '(max-width: 600px) calc(200vw - 5rem), (max-width: 720px) calc(10
         // Day <-> night: text dissolves into the changing background while the greeting and the underlined
         // words glow in the accent colour; they hold alone for a second, then the text reappears in the new light.
         root.classList.add('scene-swap');
+        const scheme = root.style.colorScheme;
         S.paint(st, { dissolve: true });
+        root.style.colorScheme = scheme;                               // scrollbars etc. switch once the background has
         swapT = setTimeout(() => {                                   // ~1.8 s to dissolve, then a 1 s pause on the highlights
           if (my !== token) return;
           S.paint(st);
@@ -151,8 +170,9 @@ const sizes = '(max-width: 600px) calc(200vw - 5rem), (max-width: 720px) calc(10
         }, 2800);
       } else {
         S.paint(st);
-        fadeT = setTimeout(() => root.classList.remove('scene-fade'), 2000);
+        fadeT = setTimeout(() => root.classList.remove('scene-fade'), dur + 100);
       }
+      followTheme((flip ? 2.8 : fade) * 1000 + 2200);   // after paint, so it starts from the old colour
       sync();
     };
 
@@ -182,7 +202,8 @@ const sizes = '(max-width: 600px) calc(200vw - 5rem), (max-width: 720px) calc(10
     document.addEventListener('click', (e) => { if (!bc.contains(e.target)) setOpen(false); });
     document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && bc.classList.contains('open')) { setOpen(false); seasonBtn.focus(); } });
 
-    // Play through the four seasons slowly (about 5 s each: a 2 s fade, then 3 s to take it in), then settle back.
+    // Play through the four seasons, each for the same time: a long 3.5 s blend into it, then a 1 s hold.
+    const PLAY_FADE = 3.5, PLAY_STEP = 4500;
     let cyc = null;
     const label = (el, t) => { el.title = t; el.setAttribute('aria-label', t); };
     const stopCycle = () => { if (!cyc) return; clearTimeout(cyc); cyc = null; bc.classList.remove('cycling'); label(cycleBtn, 'Play through the seasons'); };
@@ -195,8 +216,8 @@ const sizes = '(max-width: 600px) calc(200vw - 5rem), (max-width: 720px) calc(10
       const step = () => {
         if (i > seasons.length) { stopCycle(); show(S.current()); return; }
         const k = seasons[(from + i) % seasons.length];
-        show({ a: k, b: null, s: 0, w: base.w, season: k, tod: base.tod });
-        i++; cyc = setTimeout(step, 5000);
+        show({ a: k, b: null, s: 0, w: base.w, season: k, tod: base.tod }, PLAY_FADE);
+        i++; cyc = setTimeout(step, PLAY_STEP);
       };
       cyc = 1; step();
     });

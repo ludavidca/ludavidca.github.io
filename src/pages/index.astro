@@ -14,9 +14,9 @@ const home = audiences[0];
 
   <p>I work on AI systems and backend infrastructure, turning complex real-world workflows into products that hold up at scale and stay simple to use. I study Management Engineering and Computing at the University of Waterloo.</p>
 
-  <p>I'm currently at <a class="dotted" href="https://www.8090.ai/">8090</a>, building software for surgical sales reps at a multi-billion-dollar eye health company. Before that, I designed and shipped Plan Mode at <a class="dotted" href="https://www.cognichip.ai/">Cognichip</a>, an agentic AI IDE for chip design backed by <a class="dotted" href="https://www.cognichip.ai/news/seligman-ventures-leads-cognichips-60m-series-a-to-back-physics-informed-ai-for-chip-design-intel-ceo-lip-bu-tan-and-seligman-ventures-umesh-padval-join-the-board">Intel's CEO</a>, and spent two terms at <a class="dotted" href="https://www.loblawdigital.co/">Loblaws</a>, Canada's largest retailer, building LLM pipelines across 150,000+ grocery items.</p>
+  <p>I'm currently at <a class="dotted" href="https://www.8090.ai/" target="_blank" rel="noopener">8090</a>, building software for surgical sales reps at a multi-billion-dollar eye health company. Before that, I designed and shipped Plan Mode at <a class="dotted" href="https://www.cognichip.ai/" target="_blank" rel="noopener">Cognichip</a>, an agentic AI IDE for chip design backed by <a class="dotted" href="https://www.cognichip.ai/news/seligman-ventures-leads-cognichips-60m-series-a-to-back-physics-informed-ai-for-chip-design-intel-ceo-lip-bu-tan-and-seligman-ventures-umesh-padval-join-the-board" target="_blank" rel="noopener">Intel's CEO</a>, and spent two terms at <a class="dotted" href="https://www.loblawdigital.co/" target="_blank" rel="noopener">Loblaws</a>, Canada's largest retailer, building LLM pipelines across 150,000+ grocery items.</p>
 
-  <p>During school, I was Technical Project Lead at <a class="dotted" href="https://uwblueprint.org/">UW Blueprint</a>, where I mentored developers and drove the architectural design of a route management system for Food4Kids Waterloo Region, now scaling to three chapters across <a class="dotted" href="https://www.food4kids.ca/">Food4Kids Ontario</a> and serving over 5,000 people at 154 schools.</p>
+  <p>During school, I was Technical Project Lead at <a class="dotted" href="https://uwblueprint.org/" target="_blank" rel="noopener">UW Blueprint</a>, where I mentored developers and drove the architectural design of a route management system for Food4Kids Waterloo Region, now scaling to three chapters across <a class="dotted" href="https://www.food4kids.ca/" target="_blank" rel="noopener">Food4Kids Ontario</a> and serving over 5,000 people at 154 schools.</p>
 
   <p>I grew up in Shanghai and Calgary. Outside of work I love to cook, read, and travel.</p>
 
@@ -29,7 +29,7 @@ const home = audiences[0];
       {jobs.map((j) => (
         <li>
           <div class="row">
-            <span class="co"><a class="dotted" href={j.url}>{j.co}</a> · {j.role}</span>
+            <span class="co"><a class="dotted" href={j.url} target="_blank" rel="noopener">{j.co}</a> · {j.role}</span>
             <span class="when">{j.when}</span>
           </div>
           <p>{j.d}</p>
@@ -80,7 +80,8 @@ const home = audiences[0];
     const armIdle = () => { clearTimeout(idle); idle = setTimeout(goHome, 12000); };
     let auto = !reduce;
     (async () => {
-      await sleep(1800);
+      // Wait for the arrival intro (wipe, then underlines) to finish before the word starts changing.
+      await sleep(document.documentElement.classList.contains('arrived') ? 1800 : 3600);
       for (let k = 1; k <= words.length && auto; k++) {
         i = k % words.length;
         await retype(words[i]);

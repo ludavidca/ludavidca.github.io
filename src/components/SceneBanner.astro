@@ -1,0 +1,255 @@
+---
+// The home-page banner: Vermilion Lakes in four seasons, by day and by night.
+// Auto blends the photos day by day between seasons and through dusk and dawn.
+// Hover the photo (or look in its corner on a phone) for the controls: season, sun/moon, play.
+import Icon from './Icon.astro';
+import { seasons, alts } from '../data/scene';
+
+const names = { winter: 'Winter', spring: 'Spring', summer: 'Summer', autumn: 'Autumn' } as const;
+const tods = ['day', 'night'] as const;
+// Phones show the middle half of the panorama at twice the height, so they get the wider files.
+const widths = [648, 1296, 2592];
+const sizes = '(max-width: 600px) calc(200vw - 5rem), (max-width: 720px) calc(100vw - 2.5rem), 648px';
+---
+<div class="bnr" id="bnr">
+  <div class="bnr-pic" id="bnr-pic" role="img" aria-label={alts.winter.day}>
+  {tods.map((t) => (
+    <div class="grp" data-t={t}>
+      {seasons.map((s) => (
+        <img
+          data-s={s} data-t={t}
+          data-src={`/banner/${s}-${t}-1296.jpg`}
+          data-srcset={widths.map((w) => `/banner/${s}-${t}-${w}.jpg ${w}w`).join(', ')}
+          sizes={sizes} width="1296" height="264" alt="" decoding="async"
+        />
+      ))}
+    </div>
+  ))}
+  <canvas class="snap" id="bnr-snap" aria-hidden="true"></canvas>
+  <noscript><img class="nojs" src="/banner/winter-day-1296.jpg" width="1296" height="264" alt="" /></noscript>
+  </div>
+
+  <div class="bc" id="bc">
+    <div class="bc-opts" id="bc-opts" role="group" aria-label="Choose a season" inert>
+      <button type="button" data-k="auto" title="Auto: follow the calendar and clock" aria-label="Auto: follow the calendar and clock"><Icon name="auto" /></button>
+      {seasons.map((s) => (
+        <button type="button" data-k={s} title={names[s]} aria-label={names[s]}><Icon name={s} /></button>
+      ))}
+    </div>
+    <button type="button" class="bc-btn" id="bc-season" aria-expanded="false" aria-controls="bc-opts" title="Season" aria-label="Choose a season">
+      {seasons.map((s) => <Icon name={s} class={`i-${s}`} />)}
+    </button>
+    <button type="button" class="bc-btn" id="bc-tod" title="Day" aria-label="Day or night">
+      <Icon name="sun" class="i-sun" /><Icon name="moon" class="i-moon" />
+    </button>
+    <button type="button" class="bc-btn" id="bc-cycle" title="Play through the seasons" aria-label="Play through the seasons">
+      <Icon name="play" class="i-play" /><Icon name="stop" class="i-stop" />
+    </button>
+  </div>
+</div>
+
+<script is:inline define:vars={{ alts, seasons }}>
+  {
+    const S = window.Scene, root = document.documentElement;
+    const bnr = document.getElementById('bnr'), pic = document.getElementById('bnr-pic'), snap = document.getElementById('bnr-snap');
+    const bc = document.getElementById('bc'), opts = document.getElementById('bc-opts');
+    const seasonBtn = document.getElementById('bc-season'), todBtn = document.getElementById('bc-tod'), cycleBtn = document.getElementById('bc-cycle');
+    const groups = { day: bnr.querySelector('.grp[data-t="day"]'), night: bnr.querySelector('.grp[data-t="night"]') };
+    const img = (s, t) => groups[t].querySelector(`img[data-s="${s}"]`);
+    const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    const start = (im, high = false) => {
+      if (!im.src) { if (high) im.fetchPriority = 'high'; im.srcset = im.dataset.srcset; im.src = im.dataset.src; }
+      return im;
+    };
+    const ready = (im) => start(im).decode().catch(() => {});
+    // The photos a scene needs: season a and/or b (whichever are visible), by day and/or night.
+    const needed = (st) => {
+      const out = [];
+      for (const t of ['day', 'night']) {
+        if ((t === 'day' && st.w >= 0.999) || (t === 'night' && st.w <= 0.001)) continue;
+        if (!(st.b && st.s >= 0.999)) out.push(img(st.a, t));
+        if (st.b && st.s > 0.001) out.push(img(st.b, t));
+      }
+      return out;
+    };
+
+    // Lay the photos out for a scene: in each layer, a underneath, b on top at strength s;
+    // the night layer sits over the day layer at strength w. Every night photo has its moon
+    // in the same spot, so overlaps always show one moon.
+    const render = (st) => {
+      for (const t of ['day', 'night']) {
+        groups[t].style.opacity = t === 'night' ? st.w : 1;
+        groups[t].querySelectorAll('img').forEach((im) => {
+          const k = im.dataset.s;
+          im.style.opacity = k === st.a ? 1 : k === st.b ? st.s : 0;
+          im.style.zIndex = k === st.a ? 1 : k === st.b ? 2 : 0;
+        });
+      }
+      pic.setAttribute('aria-label', alts[st.season][st.tod]);
+    };
+
+    // Freeze what's on screen into a canvas, so any change can crossfade from it.
+    const capture = () => {
+      const dpr = Math.min(2, window.devicePixelRatio || 1), W = Math.round(bnr.clientWidth * dpr), H = Math.round(bnr.clientHeight * dpr);
+      const prev = document.createElement('canvas'); prev.width = snap.width; prev.height = snap.height;
+      const prevAlpha = snap.style.display === 'block' ? +getComputedStyle(snap).opacity : 0;
+      if (prevAlpha > 0) prev.getContext('2d').drawImage(snap, 0, 0);
+      snap.width = W; snap.height = H;
+      const ctx = snap.getContext('2d');
+      // Crop each photo the way CSS shows it (object-fit: cover, object-position), so the snapshot lines up exactly.
+      const crop = (im) => {
+        // Real pixel size of the loaded file (naturalWidth is scaled for high-density screens; drawImage isn't).
+        const fw = +((im.currentSrc || im.src).match(/-(\d+)\.jpg/) || [])[1] || im.naturalWidth;
+        const iw = fw, ih = fw * 264 / 1296, k = Math.max(W / iw, H / ih), sw = W / k;
+        const [px, py] = getComputedStyle(im).objectPosition.split(' ').map((v) => parseFloat(v) / 100);
+        return [(iw - sw) * (isNaN(px) ? 0.5 : px), (ih - H / k) * (isNaN(py) ? 0.5 : py), sw, H / k];
+      };
+      const layer = (t) => {
+        const c = document.createElement('canvas'); c.width = W; c.height = H; const x = c.getContext('2d');
+        [...groups[t].querySelectorAll('img')].sort((p, q) => p.style.zIndex - q.style.zIndex).forEach((im) => {
+          const a = +im.style.opacity || 0;
+          if (a > 0 && im.complete && im.naturalWidth) { x.globalAlpha = a; x.drawImage(im, ...crop(im), 0, 0, W, H); }
+        });
+        return c;
+      };
+      ctx.globalAlpha = 1; ctx.drawImage(layer('day'), 0, 0);
+      const wn = +groups.night.style.opacity || 0;
+      if (wn > 0) { ctx.globalAlpha = wn; ctx.drawImage(layer('night'), 0, 0); }
+      if (prevAlpha > 0) { ctx.globalAlpha = prevAlpha; ctx.drawImage(prev, 0, 0, W, H); }
+      ctx.globalAlpha = 1;
+    };
+
+    let shown = S.current(), token = 0, fadeT, swapT;
+    const same = (p, q) => p.a === q.a && p.b === q.b && Math.abs(p.s - q.s) < 0.002 && Math.abs(p.w - q.w) < 0.002;
+    const show = async (st) => {
+      const my = ++token;
+      await Promise.all(needed(st).map(ready));
+      if (my !== token) return;
+      if (!same(st, shown) && !reduce) {
+        capture();
+        snap.style.transition = 'none'; snap.style.opacity = 1; snap.style.display = 'block';
+        render(st);
+        void snap.offsetWidth;
+        snap.style.transition = 'opacity 2s ease-in-out'; snap.style.opacity = 0;
+        setTimeout(() => { if (my === token) snap.style.display = 'none'; }, 2050);
+      } else render(st);
+      const flip = shown.tod !== st.tod && !reduce;
+      shown = st;
+      clearTimeout(fadeT); clearTimeout(swapT);
+      root.classList.add('scene-fade');
+      if (flip) {
+        // Day <-> night: text dissolves into the changing background while the greeting and the underlined
+        // words glow in the accent colour; they hold alone for a second, then the text reappears in the new light.
+        root.classList.add('scene-swap');
+        S.paint(st, { dissolve: true });
+        swapT = setTimeout(() => {                                   // ~1.8 s to dissolve, then a 1 s pause on the highlights
+          if (my !== token) return;
+          S.paint(st);
+          root.classList.remove('scene-swap');                         // highlights ease back with the text (fade still on)
+          fadeT = setTimeout(() => root.classList.remove('scene-fade'), 1900);
+        }, 2800);
+      } else {
+        S.paint(st);
+        fadeT = setTimeout(() => root.classList.remove('scene-fade'), 2000);
+      }
+      sync();
+    };
+
+    const sync = () => {
+      const p = S.pref(), night = root.dataset.tod === 'night';
+      const sel = p.season || (p.tod ? null : 'auto');
+      opts.querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', b.dataset.k === sel));
+      todBtn.title = night ? 'Night (tap for day)' : 'Day (tap for night)';
+      seasonBtn.title = `Season: ${p.season ? root.dataset.season : 'Auto (' + root.dataset.season + ')'}`;
+    };
+
+    const setOpen = (open) => { bc.classList.toggle('open', open); opts.inert = !open; seasonBtn.setAttribute('aria-expanded', open); };
+    seasonBtn.addEventListener('click', () => setOpen(!bc.classList.contains('open')));
+    opts.addEventListener('click', (e) => {
+      const b = e.target.closest('button'); if (!b) return;
+      stopCycle();
+      if (b.dataset.k === 'auto') S.setPref({});                       // Auto resets season and day/night
+      else S.setPref({ ...S.pref(), season: b.dataset.k });
+      show(S.current());
+      setTimeout(() => setOpen(false), b.dataset.k === 'auto' ? 350 : 700);
+    });
+    todBtn.addEventListener('click', () => {
+      stopCycle();
+      S.setPref({ ...S.pref(), tod: root.dataset.tod === 'night' ? 'day' : 'night' });
+      show(S.current());
+    });
+    document.addEventListener('click', (e) => { if (!bc.contains(e.target)) setOpen(false); });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && bc.classList.contains('open')) { setOpen(false); seasonBtn.focus(); } });
+
+    // Play through the four seasons slowly (about 5 s each: a 2 s fade, then 3 s to take it in), then settle back.
+    let cyc = null;
+    const label = (el, t) => { el.title = t; el.setAttribute('aria-label', t); };
+    const stopCycle = () => { if (!cyc) return; clearTimeout(cyc); cyc = null; bc.classList.remove('cycling'); label(cycleBtn, 'Play through the seasons'); };
+    cycleBtn.addEventListener('click', () => {
+      if (cyc) { stopCycle(); show(S.current()); return; }
+      bc.classList.add('cycling'); label(cycleBtn, 'Stop');
+      const base = S.current(), from = seasons.indexOf(base.season);
+      seasons.forEach((k) => { start(img(k, 'day')); if (base.w > 0.001) start(img(k, 'night')); });
+      let i = 1;
+      const step = () => {
+        if (i > seasons.length) { stopCycle(); show(S.current()); return; }
+        const k = seasons[(from + i) % seasons.length];
+        show({ a: k, b: null, s: 0, w: base.w, season: k, tod: base.tod });
+        i++; cyc = setTimeout(step, 5000);
+      };
+      cyc = 1; step();
+    });
+
+    // First paint loads only the photos on screen; the rest load once someone reaches for the controls
+    render(shown);
+    needed(shown).forEach((im) => start(im, true));
+    // (a mouse over the photo, a tap on the controls, or keyboard focus; a finger scrolling past doesn't count).
+    let warmed = false;
+    const warm = () => { if (!warmed) { warmed = true; bnr.querySelectorAll('.grp img').forEach((im) => start(im)); } };
+    bnr.addEventListener('pointerenter', (e) => { if (e.pointerType === 'mouse') warm(); });
+    bc.addEventListener('pointerdown', warm);
+    bnr.addEventListener('focusin', warm);
+
+    // Auto keeps moving with the clock (dusk, dawn, the next day's blend) while the page is open.
+    setInterval(() => { if (cyc) return; const st = S.current(); if (!same(st, shown)) show(st); }, 2 * 60 * 1000);
+
+    sync();
+  }
+</script>
+
+<style is:global>
+  .bnr{position:relative;display:block;margin-top:var(--gap-quarter);width:100%;aspect-ratio:648/132;overflow:hidden;background:var(--tile)}
+  .bnr-pic,.bnr .grp{position:absolute;inset:0}
+  .bnr .grp{isolation:isolate}
+  .bnr .grp[data-t=night]{z-index:1}
+  .bnr img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 50%;opacity:0}
+  /* Phones: twice as tall, framed on Mount Rundle and the main peak */
+  @media (max-width:600px){.bnr{aspect-ratio:648/264}.bnr img{object-position:42% 50%}}
+  .bnr img.nojs{opacity:1}
+  .bnr .snap{position:absolute;inset:0;width:100%;height:100%;z-index:3;display:none;pointer-events:none}
+
+  /* Controls: a small glass pill in the photo's corner. Shown on hover/focus; always shown on touch screens. */
+  .bc{position:absolute;right:8px;bottom:8px;z-index:5;display:flex;align-items:center;padding:3px;border-radius:999px;
+      background:rgba(12,18,28,.42);-webkit-backdrop-filter:blur(8px) saturate(1.2);backdrop-filter:blur(8px) saturate(1.2);color:#fff;
+      opacity:0;transform:translateY(4px);transition:opacity .2s ease,transform .2s ease}
+  /* Visible on hover, while the season picker is open, or when reached by keyboard (not left showing after a click) */
+  .bnr:hover .bc,.bnr:has(:focus-visible) .bc,.bc.open{opacity:1;transform:none}
+  @media (hover:none){.bc{opacity:.92;transform:none}}
+  .bc button{width:28px;height:28px;flex:none;display:grid;place-items:center;padding:0;margin:0;border:0;border-radius:50%;background:none;color:inherit;cursor:pointer;transition:background-color .15s}
+  .bc button:hover{background:rgba(255,255,255,.16)}
+  .bc button:focus-visible{outline:2px solid #fff;outline-offset:-2px}
+  .bc svg{width:13px;height:13px;display:block}
+  .bc-opts{display:flex;max-width:0;overflow:hidden;opacity:0;transition:max-width .25s cubic-bezier(.2,.8,.2,1),opacity .2s}
+  .bc.open .bc-opts{max-width:170px;opacity:1;margin-right:3px;padding-right:3px;box-shadow:inset -1px 0 rgba(255,255,255,.25)}
+  .bc-opts button[aria-pressed=true]{background:rgba(255,255,255,.26)}
+  /* Which icon each button shows follows the page's current scene */
+  #bc-season svg,#bc-tod svg,#bc-cycle svg{display:none}
+  html[data-season=winter] #bc-season .i-winter,html[data-season=spring] #bc-season .i-spring,
+  html[data-season=summer] #bc-season .i-summer,html[data-season=autumn] #bc-season .i-autumn{display:block}
+  /* Day/night: a sun by day, a moon at night */
+  html[data-tod=day] #bc-tod .i-sun,html[data-tod=night] #bc-tod .i-moon{display:block}
+  #bc-cycle .i-play{display:block;transform:translateX(1px)}
+  .bc.cycling #bc-cycle .i-play{display:none}.bc.cycling #bc-cycle .i-stop{display:block}
+  @media (prefers-reduced-motion:reduce){.bc,.bc-opts{transition:none}}
+</style>

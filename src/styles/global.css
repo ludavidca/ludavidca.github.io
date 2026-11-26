@@ -1,0 +1,107 @@
+/* The accent is a registered colour so it can fade smoothly (underlines are drawn with it as a gradient) */
+@property --accent{syntax:'<color>';inherits:true;initial-value:#1d7373}
+:root{
+  --ease:cubic-bezier(.25,.6,.3,1);--wipe:linear-gradient(90deg,#000 40%,transparent 60%);
+  color-scheme:light;
+  /* Defaults = winter day; the Scene script in the page head swaps these per season and day/night */
+  --bg:#e6eef6;--fg:#3c3c3c;--text:#525252;--accents-1:#5c676b;--accent:#1d7373;--accent-to:#1d7373;--sky:#d5e5e7;--tile:#e2e8ee;
+  --gap-quarter:.25rem;--gap:1rem;--gap-double:2rem;
+  --font-sans:-apple-system,BlinkMacSystemFont,"Segoe UI","Roboto","Oxygen","Ubuntu","Cantarell","Fira Sans","Droid Sans","Helvetica Neue",sans-serif;
+}
+*{box-sizing:border-box;min-width:0}
+html,body{background:var(--bg);width:100%;min-height:100vh;color:var(--fg);font-size:18px;font-family:var(--font-sans);margin:0;padding:0;overflow-x:hidden}
+::selection{background:var(--sky);color:var(--fg)}
+/* While the scene changes, page colours crossfade with the photo */
+html.scene-fade,html.scene-fade *:not(.snap):not(.bc):not(.bc *){transition:background-color 1.8s ease-in-out,color 1.8s ease-in-out,border-color 1.8s ease-in-out,fill 1.8s ease-in-out,--accent 1.8s ease-in-out!important}
+/* Mid day/night switch: the greeting and underlined words stay lit in the accent colour while the rest dissolves.
+   They aim at --accent-to (the new accent, set at once) rather than the fading --accent, so their own fade runs smoothly. */
+html.scene-swap h1,html.scene-swap .dotted,html.scene-swap .rot{color:var(--accent-to)}
+@media (prefers-reduced-motion:reduce){html.scene-fade,html.scene-fade *{transition:none!important}}
+
+/* The footer hugs the content above it (the footer script only nudges it below the fold if it would be cut off) */
+.main{background:var(--bg);width:40rem;max-width:100vw;margin:var(--gap-double) auto 0;padding:0 2rem;font-size:1rem;display:flex;flex-direction:column}
+.page{flex:1 0 auto}
+
+a{color:var(--fg);text-decoration:none}
+a:hover{color:var(--accent)}
+/* Dashed accent underline, drawn as a gradient so it can draw itself in on arrival (works across line breaks) */
+.dotted,.rot{background:repeating-linear-gradient(90deg,var(--accent) 0 3px,transparent 3px 6px) 0 100%/100% 1px no-repeat;padding-bottom:1px}
+.dotted{font-weight:525}
+a:focus-visible,button:focus-visible{outline:2px solid var(--fg);outline-offset:3px;border-radius:2px}
+
+h1{margin:1.5rem 0 calc(.5*var(--gap)) 0;letter-spacing:-.02rem;font-size:24px;font-weight:525;line-height:1.7rem}
+p{color:var(--text);margin-block:.5rem .8rem;font-size:.94rem;font-weight:410;line-height:1.6}
+
+/* Audience word: click to cycle */
+.rot{font:inherit;font-weight:525;color:var(--fg);border:0;padding:0 0 1px;margin:0;cursor:pointer;line-height:1.2;vertical-align:baseline;white-space:nowrap;transition:color .2s}
+.rot:hover{color:var(--accent)}
+.caret{display:inline-block;width:1px;height:1em;margin:0 -1px 0 0;background:currentColor;vertical-align:-.12em;opacity:0}
+.caret.on{opacity:1;animation:blink 1s steps(1) infinite}
+@keyframes blink{50%{opacity:0}}
+
+/* Footer: location left, links right */
+.footer{color:var(--accents-1);font-size:.8rem;font-weight:410;letter-spacing:-.02em;justify-content:space-between;align-items:center;margin-top:2.25rem;margin-bottom:3rem;display:flex;flex-wrap:wrap;gap:.25rem 0}
+.footer span{display:inline-block}
+.footer .left{display:inline-flex;flex-wrap:wrap;gap:0 18px}
+.footer .loc{display:inline-block;white-space:nowrap}
+/* Location pin: same Font Awesome solid set and ink as the link icons; tip on the baseline, top at cap height */
+.footer .pin{width:auto;height:.8em;vertical-align:0;margin-right:.38em;color:var(--fg)}
+.links{justify-content:flex-end;align-items:center;display:flex;flex-wrap:wrap;gap:4px;margin:-10px -10px -10px 0}
+.links a{position:relative;display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;color:var(--fg);transition:opacity .2s}
+.links a:hover{color:var(--accent);opacity:.8}
+.links a[aria-current="page"]{opacity:.45}
+.links svg{width:19px;height:19px}
+.links a::after{content:attr(data-tip);position:absolute;bottom:calc(100% + 2px);left:50%;transform:translate(-50%,4px);white-space:nowrap;font-size:.72rem;letter-spacing:0;padding:4px 8px;border-radius:6px;background:var(--fg);color:var(--bg);opacity:0;pointer-events:none;transition:opacity .15s,transform .15s}
+.links a:hover::after,.links a:focus-visible::after{opacity:1;transform:translate(-50%,0)}
+
+/* Experience: collapsible list under the intro */
+h2{letter-spacing:-.02rem;color:var(--fg);margin:0;font-size:19px;font-weight:525;line-height:1.7;display:inline}
+.xp{margin:1.6rem 0 0}
+.xp summary{list-style:none;cursor:pointer;display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:.15rem 1rem;padding:.25rem 0;user-select:none}
+.xp-l{display:inline-flex;align-items:center;gap:.4rem}
+.hire{font-size:.94rem;font-weight:410;color:var(--text)}
+.xp summary::-webkit-details-marker{display:none}
+.xp summary:hover h2,.xp summary:hover .chev{color:var(--accent)}
+.xp summary:focus-visible{outline:2px solid var(--fg);outline-offset:3px;border-radius:2px}
+.chev{width:17px;height:17px;flex:none;color:var(--fg);transition:transform .45s cubic-bezier(.65,0,.35,1),color .2s;transform-origin:50% 50%}
+.xp[open] .chev{transform:rotate(90deg)}
+.xp[open] .exp{animation:xpIn .45s cubic-bezier(.22,1,.36,1)}
+@keyframes xpIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+.xp[open] .exp{margin-top:.6rem}
+.exp{list-style:none;margin:0;padding:0}
+.exp li{margin:0 0 1.1rem}
+.exp .row{line-height:1.5;display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:0 1rem}
+.exp .co{font-size:.94rem;font-weight:410;color:var(--text)}
+.exp .when{font-size:.8rem;color:var(--accents-1);letter-spacing:-.02em;white-space:nowrap;font-variant-numeric:tabular-nums}
+.exp p{margin:.25rem 0 0}
+
+/* Page header for inner pages (gallery) */
+.vhead{display:flex;align-items:baseline;gap:var(--gap);margin:0 0 var(--gap)}
+.vhead .name{letter-spacing:-.02rem;color:var(--fg);font-size:24px;font-weight:525}
+.vhead .name:hover{color:var(--accent)}
+.vhead .label{margin:0;color:var(--accents-1);font-size:.94rem;font-weight:inherit;letter-spacing:normal;line-height:inherit}
+
+@media (max-width:600px){
+  .main{margin:1.25rem auto 0;padding:0 1.25rem}
+  h1{margin-top:1.25rem}
+  p{font-size:.88rem}
+  .footer{margin-top:.5rem;margin-bottom:0;padding:1.5em 0 1rem;font-size:.76rem}
+  h2{font-size:1rem}
+  .exp .when{width:100%;margin-top:.1rem}
+  .links{justify-content:flex-start;width:100%;margin:.4rem 0 0 -10px}
+}
+/* Very narrow phones: keep room for the longest rotating word so the page height never changes after load */
+@media (max-width:360px){.lead{min-height:3.2em}}
+@media (prefers-reduced-motion:reduce){.rot,.chev{transition:none}.caret.on,.xp[open] .exp{animation:none}}
+
+/* Arrival: the page wipes in left to right through a soft mask, then the underlines draw themselves in.
+   Only the first page of a visit gets the full intro; later pages just fade in. */
+@keyframes wipe-in{from{-webkit-mask-image:var(--wipe);mask-image:var(--wipe);-webkit-mask-size:250% 100%;mask-size:250% 100%;-webkit-mask-position:100% 0;mask-position:100% 0}
+  to{-webkit-mask-image:var(--wipe);mask-image:var(--wipe);-webkit-mask-size:250% 100%;mask-size:250% 100%;-webkit-mask-position:0 0;mask-position:0 0}}
+@keyframes draw-in{from{background-size:0% 1px}}
+@keyframes fade-in{from{opacity:0}}
+.main{animation:wipe-in .9s var(--ease) backwards}
+.dotted,.rot{animation:draw-in .7s var(--ease) .6s backwards}
+html.arrived .main{animation:fade-in .28s ease backwards}
+html.arrived .dotted,html.arrived .rot{animation:none}
+@media (prefers-reduced-motion:reduce){.main,.dotted,.rot{animation:none!important}}

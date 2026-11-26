@@ -1,0 +1,114 @@
+---
+import Footer from '../components/Footer.astro';
+import { person } from '../data/site';
+import { palettes, ink, night as nightHours, changes } from '../data/scene';
+import '../styles/global.css';
+
+interface Props { title?: string; description?: string }
+const { title = person.name, description = person.description } = Astro.props;
+
+const canonical = new URL(Astro.url.pathname, Astro.site);
+const ogImage = new URL('/og.jpg', Astro.site);
+---
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{title}</title>
+  <meta name="author" content={person.name}>
+  <meta name="description" content={description}>
+  <meta name="theme-color" content="#e6eef6">
+  {/* Favicon: the mountain emoji; the Scene script below swaps in the snow-capped one for winter. */}
+  <link rel="icon" href="/favicon/mountain.svg" type="image/svg+xml" data-fav="svg">
+  <link rel="icon" href="/favicon/mountain-32.png" sizes="32x32" type="image/png" data-fav="32">
+  <link rel="apple-touch-icon" href="/favicon/mountain-180.png" data-fav="180">
+  <script is:inline define:vars={{ palettes, ink, nightHours, changes }}>
+    // Scene: pick season and day/night before the page paints (no flash of the wrong colours).
+    // Auto follows Toronto-style seasons (steady, with a short blend at each change). Dark mode runs 8pm–4am;
+    // in the hours either side the banner photo blends between day and night while the page stays light.
+    // A choice made with the banner controls lasts for the visit and resets to Auto on the next one.
+    window.Scene = (() => {
+      const root = document.documentElement, KEY = 'scene';
+      const clamp = (x) => Math.min(1, Math.max(0, x)), smooth = (x) => { x = clamp(x); return x * x * (3 - 2 * x); };
+      const canMix = window.CSS && CSS.supports('color', 'color-mix(in oklab, red 50%, blue)');
+      const mix = (a, b, t) => t <= 0.001 || a === b ? a : t >= 0.999 ? b : canMix ? `color-mix(in oklab, ${b} ${(t * 100).toFixed(1)}%, ${a})` : (t < 0.5 ? a : b);
+      const pref = () => { try { return JSON.parse(sessionStorage.getItem(KEY)) || {}; } catch { return {}; } };
+      const setPref = (p) => { try { Object.keys(p).length ? sessionStorage.setItem(KEY, JSON.stringify(p)) : sessionStorage.removeItem(KEY); } catch {} };
+
+      // Season for a day of the year: steady between changes, blending over a short window around each one.
+      const blend = (d) => {
+        for (let i = 0; i < changes.length; i++) {
+          const [to, day, span] = changes[i], from = changes[(i + changes.length - 1) % changes.length][0];
+          for (const dd of [d, d + 365, d - 365]) {
+            const t = (dd - (day - span / 2)) / span;
+            if (t >= 0 && t <= 1) return { a: from, b: to, s: smooth(t) };
+          }
+        }
+        let cur = changes[changes.length - 1][0];             // before the first change of the year: still winter
+        for (const [to, day] of changes) if (d >= day) cur = to;
+        return { a: cur, b: null, s: 0 };
+      };
+      // Night amount for the photo: 1 from 8pm to 4am, blending over the 2 h before and after; 0 otherwise.
+      const night = (now) => {
+        const { start, end, fade } = nightHours, h = now.getHours() + now.getMinutes() / 60;
+        if (h >= start || h < end) return 1;
+        if (h >= start - fade) return smooth((h - (start - fade)) / fade);
+        if (h < end + fade) return 1 - smooth((h - end) / fade);
+        return 0;
+      };
+      const current = () => {
+        const p = pref(), now = new Date();
+        const day = Math.floor((now - new Date(now.getFullYear(), 0, 1)) / 864e5);
+        const sb = palettes[p.season] ? { a: p.season, b: null, s: 0 } : blend(day);
+        const w = p.tod === 'night' ? 1 : p.tod === 'day' ? 0 : night(now);
+        // The page goes dark only in the full-night window (8pm–4am); during the blend hours it stays light.
+        const h = now.getHours() + now.getMinutes() / 60, late = h >= nightHours.start || h < nightHours.end;
+        const tod = p.tod === 'night' || p.tod === 'day' ? p.tod : late ? 'night' : 'day';
+        return { ...sb, w, season: sb.b && sb.s >= 0.5 ? sb.b : sb.a, tod };
+      };
+      // Page colours follow the season blend; they switch day/night at mid-twilight so text stays readable.
+      // `dissolve` paints the text in the background colour (used mid day/night switch, see SceneBanner).
+      const paint = (st, { dissolve = false } = {}) => {
+        const A = palettes[st.a][st.tod], B = palettes[st.b || st.a][st.tod], k = ink[st.tod];
+        const bg = mix(A.bg, B.bg, st.s), accent = mix(A.accent, B.accent, st.s), set = (n, v) => root.style.setProperty(n, v);
+        root.dataset.season = st.season; root.dataset.tod = st.tod;
+        set('--bg', bg); set('--accent', accent); set('--accent-to', accent);
+        set('--fg', dissolve ? bg : k.fg); set('--text', dissolve ? bg : k.text); set('--accents-1', dissolve ? bg : k.muted); set('--tile', k.tile);
+        set('--sky', `color-mix(in srgb, ${accent} ${st.tod === 'night' ? 35 : 16}%, ${bg})`);
+        root.style.colorScheme = st.tod === 'night' ? 'dark' : 'light';
+        document.querySelector('meta[name="theme-color"]')?.setAttribute('content', st.s < 0.5 ? A.bg : B.bg);
+        const icon = st.season === 'winter' ? 'snow' : 'mountain';
+        if (root.dataset.icon !== icon) {
+          root.dataset.icon = icon;
+          for (const l of document.querySelectorAll('link[data-fav]')) { const n = l.dataset.fav; l.href = `/favicon/${icon}${n === 'svg' ? '.svg' : `-${n}.png`}`; }
+        }
+      };
+      paint(current());
+      // First page of the visit gets the full wipe-in; pages after that just fade in.
+      try { if (sessionStorage.getItem('arrived')) root.classList.add('arrived'); sessionStorage.setItem('arrived', '1'); } catch {}
+      return { pref, setPref, current, paint };
+    })();
+  </script>
+  <link rel="canonical" href={canonical}>
+  <meta property="og:title" content={title}>
+  <meta property="og:description" content={description}>
+  <meta property="og:url" content={canonical}>
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content={person.name}>
+  <meta property="og:image" content={ogImage}>
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="Vermilion Lakes and the Rockies in summer">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="sitemap" href="/sitemap-index.xml">
+
+  <slot name="head" />
+</head>
+<body>
+  <main class="main">
+    <div class="page"><slot /></div>
+    <Footer />
+  </main>
+</body>
+</html>

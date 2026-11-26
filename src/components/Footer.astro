@@ -1,0 +1,44 @@
+---
+import Icon from './Icon.astro';
+import { person } from '../data/site';
+
+const path = Astro.url.pathname.replace(/\/$/, '') || '/';
+const year = new Date().getFullYear();
+---
+<footer class="footer">
+  <span class="left">
+    <span>© {year} {person.name}</span>
+    <span class="loc"><Icon name="pin" class="pin" />{person.location}</span>
+  </span>
+  <nav class="links" aria-label="Links">
+    <a href="/gallery/" data-tip="Gallery" aria-label="Gallery" aria-current={path === '/gallery' ? 'page' : undefined}><Icon name="gallery" /></a>
+    <a href={person.resume} target="_blank" rel="noopener" data-tip="Resume" aria-label="Resume (opens in a new tab)"><Icon name="resume" /></a>
+    <a href={`mailto:${person.email}`} data-tip={person.email} aria-label={`Email ${person.email}`}><Icon name="email" /></a>
+    <a href="https://www.linkedin.com/in/davidjylu/" target="_blank" rel="noopener" data-tip="LinkedIn" aria-label="LinkedIn (opens in a new tab)"><Icon name="linkedin" /></a>
+    <a href="https://github.com/ludavidca" target="_blank" rel="noopener" data-tip="GitHub" aria-label="GitHub (opens in a new tab)"><Icon name="github" /></a>
+  </nav>
+</footer>
+<script is:inline>
+  // Never show a half-cut footer on load: if it would straddle the bottom edge of the window,
+  // push it just below the fold. Re-checked when fonts load and when the window width changes.
+  {
+    const f = document.querySelector('.footer'), page = document.querySelector('.page');
+    let w = 0;
+    const place = (force) => {
+      if (!force && innerWidth === w) return;
+      w = innerWidth;
+      f.style.marginTop = ''; page.style.flexGrow = '';
+      if (scrollY > 0) return;
+      const vh = document.documentElement.clientHeight;
+      let r = f.getBoundingClientRect();
+      if (r.top < vh && r.bottom > vh + 0.5) {
+        page.style.flexGrow = '0';               // stop the stretch space from absorbing the push
+        r = f.getBoundingClientRect();
+        f.style.marginTop = parseFloat(getComputedStyle(f).marginTop) + Math.max(0, vh - r.top) + 24 + 'px';
+      }
+    };
+    place(true);
+    document.fonts?.ready.then(() => place(true));
+    addEventListener('resize', () => place(false));
+  }
+</script>

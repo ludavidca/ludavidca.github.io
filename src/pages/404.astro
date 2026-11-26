@@ -1,0 +1,9 @@
+---
+import Base from '../layouts/Base.astro';
+import { person } from '../data/site';
+---
+<Base title={`Page not found · ${person.name}`}>
+  <meta slot="head" name="robots" content="noindex">
+  <h1>Page not found.</h1>
+  <p>That page doesn't exist. Head back to the <a class="dotted" href="/">home page</a> or the <a class="dotted" href="/gallery/">gallery</a>.</p>
+</Base>

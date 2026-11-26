@@ -13,7 +13,7 @@
 html,body{background:var(--bg);width:100%;min-height:100vh;color:var(--fg);font-size:18px;font-family:var(--font-sans);margin:0;padding:0;overflow-x:hidden}
 ::selection{background:var(--sky);color:var(--fg)}
 /* While the scene changes, page colours crossfade with the photo */
-html.scene-fade,html.scene-fade *:not(.snap):not(.bc):not(.bc *){transition:background-color var(--fade) ease-in-out,color var(--fade) ease-in-out,border-color var(--fade) ease-in-out,fill var(--fade) ease-in-out,--accent var(--fade) ease-in-out!important}
+html.scene-fade,html.scene-fade *:not(.snap):not(.bc):not(.bc *){transition:background-color var(--fade) ease-in-out,color var(--ink-t,var(--fade)) ease-in-out var(--ink-delay,0s),border-color var(--fade) ease-in-out,fill var(--fade) ease-in-out,--accent var(--fade) ease-in-out!important}
 /* Mid day/night switch: the greeting and underlined words stay lit in the accent colour while the rest dissolves.
    They aim at --accent-to (the new accent, set at once) rather than the fading --accent, so their own fade runs smoothly. */
 html.scene-swap h1,html.scene-swap .dotted,html.scene-swap .rot{color:var(--accent-to)}

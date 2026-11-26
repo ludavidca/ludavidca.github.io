@@ -75,13 +75,14 @@ const ogImage = new URL('/og.jpg', Astro.site);
         return { ...sb, w, season: sb.b && sb.s >= 0.5 ? sb.b : sb.a, tod };
       };
       // Page colours follow the season blend; they switch day/night at mid-twilight so text stays readable.
-      // `dissolve` paints the text in the background colour (used mid day/night switch, see SceneBanner).
-      const paint = (st, { dissolve = false } = {}) => {
+      // `dissolve` (0–1) pulls the text toward the background colour (used mid day/night switch, see SceneBanner).
+      const paint = (st, { dissolve = 0 } = {}) => {
         const A = palettes[st.a][st.tod], B = palettes[st.b || st.a][st.tod], k = ink[st.tod];
         const bg = mix(A.bg, B.bg, st.s), accent = mix(A.accent, B.accent, st.s), set = (n, v) => root.style.setProperty(n, v);
         root.dataset.season = st.season; root.dataset.tod = st.tod;
         set('--bg', bg); set('--accent', accent); set('--accent-to', accent);
-        set('--fg', dissolve ? bg : k.fg); set('--text', dissolve ? bg : k.text); set('--accents-1', dissolve ? bg : k.muted); set('--tile', k.tile);
+        const d = +dissolve || 0;
+        set('--fg', mix(k.fg, bg, d)); set('--text', mix(k.text, bg, d)); set('--accents-1', mix(k.muted, bg, d)); set('--tile', k.tile);
         set('--sky', `color-mix(in srgb, ${accent} ${st.tod === 'night' ? 35 : 16}%, ${bg})`);
         root.style.colorScheme = st.tod === 'night' ? 'dark' : 'light';
         document.querySelector('meta[name="theme-color"]')?.setAttribute('content', st.s < 0.5 ? A.bg : B.bg);

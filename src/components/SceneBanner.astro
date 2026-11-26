@@ -137,7 +137,11 @@ const sizes = '(max-width: 600px) calc(200vw - 5rem), (max-width: 720px) calc(10
     let shown = S.current(), token = 0, fadeT, swapT;
     const same = (p, q) => p.a === q.a && p.b === q.b && Math.abs(p.s - q.s) < 0.002 && Math.abs(p.w - q.w) < 0.002;
     // fade: seconds for the photo crossfade; page colours follow a touch faster.
-    const show = async (st, fade = 2) => {
+    // Day/night switch styles (dissolve: how far text dims toward the background; hold: ms before it settles).
+    // soft (the sun/moon button): text dims but stays readable while the highlights glow.
+    // plain (the automatic 8 pm / 4 am switch): a straight crossfade, so nobody's reading is interrupted.
+    const SWAPS = { soft: { dissolve: 0.3, hold: 2300 }, plain: { dissolve: 0, hold: 1400 } };
+    const show = async (st, fade = 2, { auto = false } = {}) => {
       const my = ++token;
       await Promise.all(needed(st).map(ready));
       if (my !== token) return;
@@ -156,18 +160,24 @@ const sizes = '(max-width: 600px) calc(200vw - 5rem), (max-width: 720px) calc(10
       clearTimeout(fadeT); clearTimeout(swapT);
       root.classList.add('scene-fade');
       if (flip) {
-        // Day <-> night: text dissolves into the changing background while the greeting and the underlined
-        // words glow in the accent colour; they hold alone for a second, then the text reappears in the new light.
+        // Day <-> night: text fades toward the changing background while the greeting and the underlined
+        // words glow in the accent colour; after a short hold the text settles into the new light.
+        const sw = SWAPS[auto ? 'plain' : 'soft'];
+        // Text and background must pass the same brightness at some point, so the text crosses over quickly
+        // at the background's midpoint: hard to read for only a moment (~0.5 s).
+        root.style.setProperty('--ink-t', '.5s');
+        root.style.setProperty('--ink-delay', `${Math.max(0, dur * 0.45 / 1000 - 0.25).toFixed(2)}s`);
         root.classList.add('scene-swap');
         const scheme = root.style.colorScheme;
-        S.paint(st, { dissolve: true });
+        S.paint(st, { dissolve: sw.dissolve });
         root.style.colorScheme = scheme;                               // scrollbars etc. switch once the background has
-        swapT = setTimeout(() => {                                   // ~1.8 s to dissolve, then a 1 s pause on the highlights
+        swapT = setTimeout(() => {
           if (my !== token) return;
+          root.style.removeProperty('--ink-t'); root.style.removeProperty('--ink-delay');
           S.paint(st);
           root.classList.remove('scene-swap');                         // highlights ease back with the text (fade still on)
           fadeT = setTimeout(() => root.classList.remove('scene-fade'), 1900);
-        }, 2800);
+        }, sw.hold);
       } else {
         S.paint(st);
         fadeT = setTimeout(() => root.classList.remove('scene-fade'), dur + 100);
@@ -249,7 +259,7 @@ const sizes = '(max-width: 600px) calc(200vw - 5rem), (max-width: 720px) calc(10
     } catch {}
 
     // Auto keeps moving with the clock (dusk, dawn, the next day's blend) while the page is open.
-    setInterval(() => { if (cyc) return; const st = S.current(); if (!same(st, shown)) show(st); }, 2 * 60 * 1000);
+    setInterval(() => { if (cyc) return; const st = S.current(); if (!same(st, shown)) show(st, 2, { auto: true }); }, 2 * 60 * 1000);
 
     sync();
   }

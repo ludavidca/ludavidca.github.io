@@ -232,6 +232,22 @@ const sizes = '(max-width: 600px) calc(200vw - 5rem), (max-width: 720px) calc(10
     bc.addEventListener('pointerdown', warm);
     bnr.addEventListener('focusin', warm);
 
+    // One-time hint on mouse devices: ~4 s after load (once the intro is done) the controls fade in for 3 s.
+    // Skipped if the visitor has already found them (hovered or focused the banner) or saw the hint before.
+    try {
+      if (matchMedia('(hover: hover)').matches && !localStorage.getItem('bc-hint')) {
+        let found = false;
+        const seen = () => { found = true; try { localStorage.setItem('bc-hint', '1'); } catch {} };
+        bnr.addEventListener('pointerenter', seen, { once: true });
+        bnr.addEventListener('focusin', seen, { once: true });
+        setTimeout(() => {
+          if (found) return;
+          seen(); bc.classList.add('hint');
+          setTimeout(() => bc.classList.remove('hint'), 3000);
+        }, 4000);
+      }
+    } catch {}
+
     // Auto keeps moving with the clock (dusk, dawn, the next day's blend) while the page is open.
     setInterval(() => { if (cyc) return; const st = S.current(); if (!same(st, shown)) show(st); }, 2 * 60 * 1000);
 
@@ -256,6 +272,8 @@ const sizes = '(max-width: 600px) calc(200vw - 5rem), (max-width: 720px) calc(10
       opacity:0;transform:translateY(4px);transition:opacity .2s ease,transform .2s ease}
   /* Visible on hover, while the season picker is open, or when reached by keyboard (not left showing after a click) */
   .bnr:hover .bc,.bnr:has(:focus-visible) .bc,.bc.open{opacity:1;transform:none}
+  /* First visit with a mouse: the controls show themselves once, slowly, so people know they exist */
+  .bc.hint{opacity:1;transform:none;transition:opacity .6s ease,transform .6s ease}
   @media (hover:none){.bc{opacity:.92;transform:none}}
   .bc button{width:28px;height:28px;flex:none;display:grid;place-items:center;padding:0;margin:0;border:0;border-radius:50%;background:none;color:inherit;cursor:pointer;transition:background-color .15s}
   .bc button:hover{background:rgba(255,255,255,.16)}

@@ -1,0 +1,13 @@
+---
+import Icon from './Icon.astro';
+import { person } from '../data/site';
+
+const path = Astro.url.pathname.replace(/\/$/, '') || '/';
+---
+<nav class="links" aria-label="Links">
+  <a href="/gallery/" data-tip="Gallery" aria-label="Gallery" aria-current={path === '/gallery' ? 'page' : undefined}><Icon name="gallery" /></a>
+  <a href={person.resume} target="_blank" rel="noopener" data-tip="Resume" aria-label="Resume (opens in a new tab)"><Icon name="resume" /></a>
+  <a href={`mailto:${person.email}`} data-tip={person.email} aria-label={`Email ${person.email}`}><Icon name="email" /></a>
+  <a href="https://www.linkedin.com/in/davidjylu/" target="_blank" rel="noopener" data-tip="LinkedIn" aria-label="LinkedIn (opens in a new tab)"><Icon name="linkedin" /></a>
+  <a href="https://github.com/ludavidca" target="_blank" rel="noopener" data-tip="GitHub" aria-label="GitHub (opens in a new tab)"><Icon name="github" /></a>
+</nav>

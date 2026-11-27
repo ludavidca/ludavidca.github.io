@@ -2,21 +2,11 @@
 import Icon from './Icon.astro';
 import { person } from '../data/site';
 
-const path = Astro.url.pathname.replace(/\/$/, '') || '/';
 const year = new Date().getFullYear();
 ---
 <footer class="footer">
-  <span class="left">
-    <span>© {year} {person.name}</span>
-    <span class="loc"><Icon name="pin" class="pin" />{person.location}</span>
-  </span>
-  <nav class="links" aria-label="Links">
-    <a href="/gallery/" data-tip="Gallery" aria-label="Gallery" aria-current={path === '/gallery' ? 'page' : undefined}><Icon name="gallery" /></a>
-    <a href={person.resume} target="_blank" rel="noopener" data-tip="Resume" aria-label="Resume (opens in a new tab)"><Icon name="resume" /></a>
-    <a href={`mailto:${person.email}`} data-tip={person.email} aria-label={`Email ${person.email}`}><Icon name="email" /></a>
-    <a href="https://www.linkedin.com/in/davidjylu/" target="_blank" rel="noopener" data-tip="LinkedIn" aria-label="LinkedIn (opens in a new tab)"><Icon name="linkedin" /></a>
-    <a href="https://github.com/ludavidca" target="_blank" rel="noopener" data-tip="GitHub" aria-label="GitHub (opens in a new tab)"><Icon name="github" /></a>
-  </nav>
+  <span class="loc"><Icon name="pin" class="pin" />{person.location}</span>
+  <span>© {year} {person.name}</span>
 </footer>
 <script is:inline>
   // Never show a half-cut footer on load: if it would straddle the bottom edge of the window,

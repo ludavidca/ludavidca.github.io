@@ -48,9 +48,10 @@ for (const p of photos) {
 // tile in each column also flexes to soak up the leftover gap pixels.
 const target = heights.reduce((a, b) => a + b, 0) / COLS;
 const tiles = cols.map((col, c) => col.map((p) => ({ ...p, ratio: `${p.w} / ${((p.h * target) / heights[c]).toFixed(1)}` })));
+import Links from '../components/Links.astro';
 ---
 <Base title={`Gallery · ${person.name}`} description={`Food David has cooked and places he's been.`}>
-  <header class="vhead"><a class="name" href="/">{person.name}</a><h1 class="label">Gallery</h1></header>
+  <header class="vhead"><div class="vtitle"><a class="name" href="/">{person.name}</a><h1 class="label">Gallery</h1></div><Links /></header>
 
   <div class="grid">
     {tiles.map((col) => (

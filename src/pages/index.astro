@@ -4,11 +4,15 @@ import SceneBanner from '../components/SceneBanner.astro';
 import { audiences, hiringSchedule, jobs } from '../data/site';
 
 const home = audiences[0];
+import Links from '../components/Links.astro';
 ---
 <Base>
   <SceneBanner />
 
-  <h1>Hi, I'm David.</h1>
+  <div class="titlebar">
+    <h1>Hi, I'm David.</h1>
+    <Links />
+  </div>
 
   <p class="lead">I build software for <button class="rot" id="rot" type="button" aria-label={`${home}. Click to see examples.`}><span class="rot-word" id="rot-word">{home}</span><span class="caret" id="caret" aria-hidden="true"></span></button>.</p>
 
